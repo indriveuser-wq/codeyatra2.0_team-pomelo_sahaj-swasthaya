@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-function Page() {
+function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -26,6 +26,7 @@ function Page() {
           className="p-8 bg-white rounded shadow-md w-96"
         >
           <h2 className="text-2xl mb-4 font-bold">Login</h2>
+          <label>Email: </label>
           <input
             className="w-full p-2 mb-4 border  rounded-xl"
             type="email"
@@ -34,6 +35,7 @@ function Page() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+          <label>Password: </label>
           <input
             className="w-full p-2 mb-4 border  rounded-xl"
             type="password"
@@ -46,9 +48,9 @@ function Page() {
             Login
           </button>
           <p className="mt-4 text-sm text-center">
-            No account?{" "}
+            Don,t have an account? {" "}
             <Link href="/register" className="text-blue-500 ">
-              Don,t have an account? , Register
+              Register
             </Link>
           </p>
         </form>
@@ -57,4 +59,4 @@ function Page() {
   );
 }
 
-export default Page;
+export default Login;
