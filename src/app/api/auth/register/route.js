@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(req) {
   try {
     await connectDB();
-    const { name, email, password, phone } = await req.json();
+    const { name, email, password, phone, insurance } = await req.json();
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -18,6 +18,7 @@ export async function POST(req) {
       email,
       password: hashedPassword,
       phone,
+      insurance: insurance || false,
     });
 
     return NextResponse.json(
