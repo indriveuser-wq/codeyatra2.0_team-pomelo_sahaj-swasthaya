@@ -6,7 +6,7 @@ const QueueTokenSchema = new mongoose.Schema({
   patientName: { type: String, required: true },
   phone: { type: String, required: true },
   
-  // New Fields for Slot System
+  
   appointmentTime: { type: Date, required: true }, // Selected slot time
   missedCount: { type: Number, default: 0 },       // Tracks strikes (0 to 3)
   isCheckedIn: { type: Boolean, default: false },  // Did they arrive?
