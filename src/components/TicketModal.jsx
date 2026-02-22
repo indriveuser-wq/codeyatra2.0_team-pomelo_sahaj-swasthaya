@@ -1,3 +1,5 @@
+const { default: Row } = require("./Row");
+
 function TicketModal({
   apt,
   onClose,

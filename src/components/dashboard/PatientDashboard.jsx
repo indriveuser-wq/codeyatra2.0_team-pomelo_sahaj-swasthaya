@@ -1,4 +1,5 @@
 import React from 'react'
+import TicketModal from '@/components/TicketModal'
 
 function PatientDashboard({ user }) {
   const [selectedApt, setSelectedApt] = useState<
