@@ -1,11 +1,8 @@
 'use client';
-
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { Pill, Stethoscope, FileText, Syringe } from 'lucide-react';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
 
 const MOCK_APPOINTMENTS = [
   {
@@ -63,8 +60,7 @@ const MOCK_PATIENTS = [
   },
 ];
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-
+// ---- Navbar ----
 function Navbar({ user, onLogout }) {
   const [open, setOpen] = useState(false);
 
@@ -76,7 +72,6 @@ function Navbar({ user, onLogout }) {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-blue-700 rounded-md flex items-center justify-center flex-shrink-0">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
@@ -96,9 +91,9 @@ function Navbar({ user, onLogout }) {
           </span>
         </div>
 
-        {/* Patient nav */}
         {user.role === 'patient' && (
           <>
+            {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-6">
               {navLinks.map((l) => (
                 <a
@@ -116,6 +111,8 @@ function Navbar({ user, onLogout }) {
                 Logout
               </button>
             </nav>
+
+            {/* Mobile hamburger */}
             <button className="md:hidden p-2" onClick={() => setOpen(!open)}>
               <svg
                 width="22"
@@ -139,18 +136,13 @@ function Navbar({ user, onLogout }) {
           </>
         )}
 
-        {/* Staff / Admin nav */}
         {user.role !== 'patient' && (
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 hidden sm:block">
               {user.name}
             </span>
             <span
-              className={`text-xs px-2 py-1 rounded-full font-medium ${
-                user.role === 'admin'
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'bg-teal-100 text-teal-700'
-              }`}
+              className={`text-xs px-2 py-1 rounded-full font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}
             >
               {user.role === 'admin' ? 'Admin' : 'Staff'}
             </span>
@@ -188,8 +180,7 @@ function Navbar({ user, onLogout }) {
   );
 }
 
-// ─── Ticket Modal ─────────────────────────────────────────────────────────────
-
+// ---- Appointment Ticket Modal ----
 function TicketModal({ apt, onClose }) {
   return (
     <div
@@ -227,11 +218,11 @@ function TicketModal({ apt, onClose }) {
           </button>
         </div>
         <div className="space-y-3 text-sm">
-          <TicketRow label="Department" value={apt.dept} />
-          <TicketRow label="Doctor" value={apt.doctor} />
-          <TicketRow label="Date" value={apt.date} />
-          <TicketRow label="Time" value={apt.time} />
-          <TicketRow label="Status" value={apt.status} highlight />
+          <Row label="Department" value={apt.dept} />
+          <Row label="Doctor" value={apt.doctor} />
+          <Row label="Date" value={apt.date} />
+          <Row label="Time" value={apt.time} />
+          <Row label="Status" value={apt.status} highlight />
         </div>
         <p className="mt-4 text-xs text-gray-400 text-center">
           Please arrive 15 min before your appointment.
@@ -244,7 +235,7 @@ function TicketModal({ apt, onClose }) {
   );
 }
 
-function TicketRow({ label, value, highlight }) {
+function Row({ label, value, highlight }) {
   return (
     <div className="flex justify-between items-center py-2 border-b border-gray-50">
       <span className="text-gray-500">{label}</span>
@@ -257,8 +248,7 @@ function TicketRow({ label, value, highlight }) {
   );
 }
 
-// ─── Patient Dashboard ────────────────────────────────────────────────────────
-
+// ---- Patient Dashboard ----
 function PatientDashboard({ user, tokenData, createToken }) {
   const [selectedApt, setSelectedApt] = useState(null);
   const router = useRouter();
@@ -276,52 +266,20 @@ function PatientDashboard({ user, tokenData, createToken }) {
         </h2>
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
           <span>
-            ID: <strong className="text-gray-800">{user._id}</strong>
+            ID: <strong className="text-gray-800">{user.id}</strong>
           </span>
           <span>
             Phone: <strong className="text-gray-800">{user.phone}</strong>
           </span>
+          {user.insuranceId && (
+            <span>
+              Insurance:{' '}
+              <strong className="text-gray-800">{user.insuranceId}</strong>
+            </span>
+          )}
         </div>
+        <p className="mt-1 text-xs text-gray-400">{user.address}</p>
       </div>
-
-      {/* Token section (live business logic) */}
-      {tokenData ? (
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-          <h2 className="text-xl font-bold mb-4">
-            Your Token: #{tokenData.tokenNumber}
-          </h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-500">Current Stage</p>
-              <p className="text-lg font-bold text-blue-700">
-                {tokenData.stage}
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="text-lg font-bold text-green-700">
-                {tokenData.status}
-              </p>
-            </div>
-            <p className="text-sm text-gray-500">
-              Created: {new Date(tokenData.createdAt).toLocaleTimeString()}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white p-6 rounded-xl shadow-sm border text-center">
-          <h2 className="text-xl font-bold mb-4">No Active Token</h2>
-          <p className="mb-6 text-gray-600">
-            Start your hospital visit journey digitally.
-          </p>
-          <button
-            onClick={createToken}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            Get Appointment Now
-          </button>
-        </div>
-      )}
 
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -383,12 +341,14 @@ function PatientDashboard({ user, tokenData, createToken }) {
 
       {/* Health info cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { Icon: Pill, label: 'Active Prescriptions', val: '2' },
-          { Icon: Stethoscope, label: 'Last Visit', val: 'Jan 12' },
-          { Icon: FileText, label: 'Lab Reports', val: '3' },
-          { Icon: Syringe, label: 'Vaccinations', val: 'Up to date' },
-        ].map(({ Icon, label, val }) => (
+        {(
+          [
+            { Icon: Pill, label: 'Active Prescriptions', val: '2' },
+            { Icon: Stethoscope, label: 'Last Visit', val: 'Jan 12' },
+            { Icon: FileText, label: 'Lab Reports', val: '3' },
+            { Icon: Syringe, label: 'Vaccinations', val: 'Up to date' },
+          ]
+        ).map(({ Icon, label, val }) => (
           <div
             key={label}
             className="card text-center flex flex-col items-center gap-1"
@@ -407,8 +367,7 @@ function PatientDashboard({ user, tokenData, createToken }) {
   );
 }
 
-// ─── Staff Dashboard ──────────────────────────────────────────────────────────
-
+// ---- Staff Dashboard ----
 function StaffDashboard({ user }) {
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -479,8 +438,7 @@ function StaffDashboard({ user }) {
   );
 }
 
-// ─── Admin Dashboard ──────────────────────────────────────────────────────────
-
+// ---- Admin Dashboard ----
 function AdminDashboard({ user }) {
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -549,13 +507,7 @@ function AdminDashboard({ user }) {
               </div>
               <div className="h-2 bg-gray-100 rounded-full">
                 <div
-                  className={`h-2 rounded-full ${
-                    d.load > 75
-                      ? 'bg-red-500'
-                      : d.load > 50
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                  }`}
+                  className={`h-2 rounded-full ${d.load > 75 ? 'bg-red-500' : d.load > 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
                   style={{ width: `${d.load}%` }}
                 />
               </div>
@@ -567,21 +519,18 @@ function AdminDashboard({ user }) {
   );
 }
 
-// ─── Main Dashboard Page ──────────────────────────────────────────────────────
-
-export default function Dashboard() {
+// ---- Main Dashboard ----
+export default function DashboardPage() {
   const { user, logout, loading } = useAuth();
   const [tokenData, setTokenData] = useState(null);
   const [loadingToken, setLoadingToken] = useState(true);
   const router = useRouter();
 
-  // Fetch token only for patients
   const fetchToken = useCallback(async () => {
     if (!user || user.role !== 'patient') {
       setLoadingToken(false);
       return;
     }
-
     try {
       const res = await fetch(`/api/token/my?userId=${user._id}`);
       const data = await res.json();
@@ -593,7 +542,6 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Redirect if not logged in, otherwise fetch token
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
@@ -604,7 +552,6 @@ export default function Dashboard() {
 
   const createToken = async () => {
     if (!user) return;
-
     try {
       const res = await fetch('/api/token', {
         method: 'POST',
@@ -615,9 +562,7 @@ export default function Dashboard() {
           userId: user._id,
         }),
       });
-
       const data = await res.json();
-
       if (data.data) {
         setTokenData(data.data);
       } else {
@@ -629,13 +574,12 @@ export default function Dashboard() {
     }
   };
 
-  if (loading || loadingToken) {
+  if (loading || loadingToken)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-400 text-sm">Loading your dashboard...</p>
       </div>
     );
-  }
 
   if (!user) return null;
 
