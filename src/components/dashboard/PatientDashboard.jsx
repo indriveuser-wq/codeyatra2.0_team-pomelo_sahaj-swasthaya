@@ -22,7 +22,7 @@ function PatientDashboard({ user }) {
       setTokenError(null);
 
       try {
-        const res = await fetch(`/api/token/my?userId=${user.email}`);
+        const res = await fetch(`/api/token/my?userId=${userId}`);
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
         const data = await res.json();
 

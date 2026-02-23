@@ -29,7 +29,7 @@ export async function GET(req) {
 
     const token = await QueueToken.findOne({
       userId: resolvedId,
-      status: { $ne: 'Completed' },
+      status: { $nin: ['Completed', 'Cancelled'] },
     }).sort({ createdAt: -1 });
 
     return NextResponse.json({ success: true, token });

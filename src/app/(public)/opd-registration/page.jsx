@@ -48,10 +48,8 @@ export default function OPDRegistrationPage() {
   });
   const [payMethod, setPayMethod] = useState('');
   const [ticketNo, setTicketNo] = useState(null);
-
-  useEffect(() => {
-    setTicketNo('OPD-' + Math.floor(Math.random() * 90000 + 10000));
-  }, []);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
 
   // Auth guard
   useEffect(() => {
@@ -118,6 +116,36 @@ export default function OPDRegistrationPage() {
     }
     fetchSlots();
   }, [doctor]);
+
+  async function handlePayment() {
+    setBookingLoading(true);
+    setBookingError('');
+    try {
+      const res = await fetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientName: user.name,
+          phone: user.phone || '',
+          userId: user._id,
+          appointmentTime: slot.time,
+          department: dept._id,
+          doctor: doctor._id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBookingError(data.error || 'Booking failed. Please try again.');
+        return;
+      }
+      setTicketNo('OPD-' + String(data.token.tokenNumber).padStart(4, '0'));
+      setStep('success');
+    } catch (err) {
+      setBookingError('Network error. Please try again.');
+    } finally {
+      setBookingLoading(false);
+    }
+  }
 
   if (!user) return null;
 
@@ -400,12 +428,16 @@ export default function OPDRegistrationPage() {
             </div>
           </div>
 
+          {bookingError && (
+            <p className="text-sm text-red-600 text-center">{bookingError}</p>
+          )}
           {payMethod && (
             <button
-              onClick={() => setStep('success')}
-              className="btn-primary w-full text-base py-4"
+              onClick={handlePayment}
+              disabled={bookingLoading}
+              className="btn-primary w-full text-base py-4 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Pay ₹200 →
+              {bookingLoading ? 'Booking...' : 'Pay ₹200 →'}
             </button>
           )}
         </div>
