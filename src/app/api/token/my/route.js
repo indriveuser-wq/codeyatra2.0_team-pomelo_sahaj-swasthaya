@@ -30,7 +30,10 @@ export async function GET(req) {
     const token = await QueueToken.findOne({
       userId: resolvedId,
       status: { $nin: ['Completed', 'Cancelled'] },
-    }).sort({ createdAt: -1 });
+    })
+      .populate('department', 'name')
+      .populate('doctor', 'name specialization')
+      .sort({ createdAt: -1 });
 
     return NextResponse.json({ success: true, token });
   } catch (error) {
