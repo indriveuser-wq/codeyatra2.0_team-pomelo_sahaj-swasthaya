@@ -20,7 +20,7 @@ export default function Navbar({ user, onLogout }) {
           { label: 'Appointments', href: '/dashboard/appointments' },
           { label: 'Reports', href: '/dashboard/reports' },
           { label: 'About', href: '/about' },
-          { label: 'Contact', href: '#' },
+          { label: 'Contact', href: '/contact' },
         ]
       : [];
 
