@@ -9,8 +9,14 @@ export async function PUT(req, { params }) {
 
   try {
     await connectDB();
-    const { role } = await req.json();
-    const updatedUser = await User.findByIdAndUpdate(params.id, { role }, { new: true });
+    const { id } = await params;
+    const { role, name, email } = await req.json();
+    const updates = {};
+    if (role)  updates.role  = role;
+    if (name)  updates.name  = name;
+    if (email) updates.email = email;
+    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true }).select('-password');
+    if (!updatedUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -23,7 +29,8 @@ export async function DELETE(req, { params }) {
 
   try {
     await connectDB();
-    await User.findByIdAndDelete(params.id);
+    const { id } = await params;
+    await User.findByIdAndDelete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
