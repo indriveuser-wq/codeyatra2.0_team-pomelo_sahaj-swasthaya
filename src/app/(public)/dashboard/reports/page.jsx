@@ -41,33 +41,39 @@ const TYPE_CONFIG = {
 const FILTERS = ['All', 'Lab', 'Radiology', 'Prescription'];
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const d = new Date(dateStr);
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 export default function ReportsPage() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('All');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
 
-  if (!mounted || loading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-400 text-sm">Loading...</p>
       </div>
     );
-  }
-  if (!user) {
-    router.replace('/login');
-    return null;
   }
 
   const filtered =
