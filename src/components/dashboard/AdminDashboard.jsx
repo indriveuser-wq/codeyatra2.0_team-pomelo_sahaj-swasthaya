@@ -93,7 +93,7 @@ function AdminDashboard({ user }) {
         <p className="text-xs text-gray-400">Administration</p>
         <h2
           className="text-xl font-semibold"
-          style={{ fontFamily: 'Fraunces,serif' }}
+          style={{ fontFamily: "Fraunces,serif" }}
         >
           {user.name}
         </h2>
@@ -126,7 +126,7 @@ function AdminDashboard({ user }) {
           Quick Actions
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {['Manage Staff', 'Departments', 'Reports', 'Settings'].map((a) => (
+          {["Manage Staff", "Departments", "Reports", "Settings"].map((a) => (
             <button
               key={a}
               className="card text-sm font-medium text-blue-700 hover:bg-blue-50 hover:border-blue-200 transition-colors text-center py-4"
