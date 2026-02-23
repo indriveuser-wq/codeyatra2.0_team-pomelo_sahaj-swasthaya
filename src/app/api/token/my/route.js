@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import QueueToken from '@/models/QueueToken';
 import User from '@/models/User';
+import Department from '@/models/Department'; // required for populate
+import Doctor from '@/models/Doctor'; // required for populate
 import mongoose from 'mongoose';
 
 export async function GET(req) {
