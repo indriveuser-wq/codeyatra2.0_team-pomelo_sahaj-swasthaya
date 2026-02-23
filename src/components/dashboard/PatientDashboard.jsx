@@ -82,7 +82,16 @@ function PatientDashboard({ user }) {
         >
           Book an Appointment
         </button>
-        <button className="btn-secondary flex-1 text-center">
+        <button
+          onClick={() => router.push('/dashboard/appointments')}
+          className="btn-secondary flex-1 text-center"
+        >
+          My Appointments
+        </button>
+        <button
+          onClick={() => router.push('/dashboard/reports')}
+          className="btn-secondary flex-1 text-center"
+        >
           View Medical History
         </button>
       </div>
@@ -119,21 +128,36 @@ function PatientDashboard({ user }) {
           </div>
         ) : tokenData ? (
           <div className="card border-l-4 border-l-blue-600 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-blue-700">
-                #{tokenData.tokenNumber}
-              </span>
-              <span
-                className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  tokenData.status === 'Waiting'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : tokenData.status === 'InProgress'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-green-100 text-green-700'
-                }`}
-              >
-                {tokenData.status}
-              </span>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {tokenData.department?.name || '—'}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Dr. {tokenData.doctor?.name || '—'}
+                </p>
+                {tokenData.doctor?.specialization && (
+                  <p className="text-xs text-gray-400">
+                    {tokenData.doctor.specialization}
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-blue-700">
+                  #{tokenData.tokenNumber}
+                </span>
+                <div
+                  className={`mt-1 text-xs px-2 py-0.5 rounded-full font-medium inline-block ${
+                    tokenData.status === 'Waiting'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : tokenData.status === 'InProgress'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {tokenData.status}
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-gray-50 rounded-lg p-3">
