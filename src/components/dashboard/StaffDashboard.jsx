@@ -108,25 +108,34 @@ function StaffDashboard({ user }) {
   const [selectedDept, setSelectedDept] = useState(ALL);
   const [selectedDoctor, setSelectedDoctor] = useState(ALL);
 
-  // Derived unique departments from fetched tokens
+  // Only Waiting/InProgress tokens belong in the active queue list
+  const activeTokens = useMemo(
+    () =>
+      tokens.filter(
+        (t) => t.status !== 'Completed' && t.status !== 'Cancelled'
+      ),
+    [tokens]
+  );
+
+  // Derived unique departments from active tokens
   const departments = useMemo(() => {
     const seen = new Set();
-    return tokens
+    return activeTokens
       .map((t) => t.department?.name)
       .filter((name) => name && !seen.has(name) && seen.add(name));
-  }, [tokens]);
+  }, [activeTokens]);
 
-  // Doctors belonging to the selected department
+  // Doctors belonging to the selected department (active tokens only)
   const doctorsInDept = useMemo(() => {
     const base =
       selectedDept === ALL
-        ? tokens
-        : tokens.filter((t) => t.department?.name === selectedDept);
+        ? activeTokens
+        : activeTokens.filter((t) => t.department?.name === selectedDept);
     const seen = new Set();
     return base
       .map((t) => t.doctor?.name)
       .filter((name) => name && !seen.has(name) && seen.add(name));
-  }, [tokens, selectedDept]);
+  }, [activeTokens, selectedDept]);
 
   // Reset doctor filter whenever department changes
   const handleDeptSelect = (dept) => {
@@ -134,20 +143,21 @@ function StaffDashboard({ user }) {
     setSelectedDoctor(ALL);
   };
 
-  // Final filtered token list
+  // Final filtered token list (from active tokens only)
   const filteredTokens = useMemo(() => {
-    return tokens.filter((t) => {
+    return activeTokens.filter((t) => {
       const deptMatch =
         selectedDept === ALL || t.department?.name === selectedDept;
       const doctorMatch =
         selectedDoctor === ALL || t.doctor?.name === selectedDoctor;
       return deptMatch && doctorMatch;
     });
-  }, [tokens, selectedDept, selectedDoctor]);
+  }, [activeTokens, selectedDept, selectedDoctor]);
 
   // When a queue row's Prescribe button is clicked
   const handlePrescribe = (token) => {
     setRxPrefill({
+      tokenId: token._id,
       tokenNumber: token.tokenNumber,
       doctorName: token.doctor?.name ?? '',
       department: token.department?.name ?? '',
@@ -179,6 +189,13 @@ function StaffDashboard({ user }) {
       setRefreshing(false);
     }
   }, []);
+
+  // Called by PrescriptionForm after a prescription is successfully saved
+  const handlePrescriptionSuccess = useCallback(() => {
+    fetchQueue({ silent: true });
+    setRxPrefill(null);
+    setActiveTab('Queue');
+  }, [fetchQueue]);
 
   useEffect(() => {
     fetchQueue();
@@ -221,7 +238,7 @@ function StaffDashboard({ user }) {
           {!loading && !error && <StatsRow tokens={tokens} />}
 
           {/* Department + Doctor filters */}
-          {!loading && !error && tokens.length > 0 && (
+          {!loading && !error && activeTokens.length > 0 && (
             <div className="card space-y-3">
               <FilterPills
                 label="Department"
@@ -285,17 +302,19 @@ function StaffDashboard({ user }) {
             </div>
           )}
 
-          {/* Empty (no tokens at all today) */}
-          {!loading && !error && tokens.length === 0 && (
+          {/* Empty — no active patients today */}
+          {!loading && !error && activeTokens.length === 0 && (
             <div className="card text-center py-10 text-gray-400 text-sm">
-              No patients in the queue today.
+              {tokens.length > 0
+                ? 'All patients for today have been attended to.'
+                : 'No patients in the queue today.'}
             </div>
           )}
 
           {/* Empty after filtering */}
           {!loading &&
             !error &&
-            tokens.length > 0 &&
+            activeTokens.length > 0 &&
             filteredTokens.length === 0 && (
               <div className="card text-center py-10 text-gray-400 text-sm">
                 No patients match the selected filters.
@@ -314,7 +333,10 @@ function StaffDashboard({ user }) {
       )}
 
       {activeTab === 'Write Prescription' && (
-        <PrescriptionForm prefill={rxPrefill} />
+        <PrescriptionForm
+          prefill={rxPrefill}
+          onSuccess={handlePrescriptionSuccess}
+        />
       )}
     </main>
   );
