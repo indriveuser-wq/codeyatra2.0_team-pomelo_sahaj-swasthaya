@@ -30,6 +30,19 @@ export async function GET(req) {
     }
 
     const allStatus = searchParams.get('allStatus') === 'true';
+    const activeList = searchParams.get('activeList') === 'true';
+
+    if (activeList) {
+      const tokens = await QueueToken.find({
+        userId: resolvedId,
+        status: { $nin: ['Completed', 'Cancelled'] },
+      })
+        .populate('department', 'name')
+        .populate('doctor', 'name specialization')
+        .sort({ appointmentTime: 1 })
+        .limit(3);
+      return NextResponse.json({ success: true, tokens });
+    }
 
     if (allStatus) {
       const tokens = await QueueToken.find({ userId: resolvedId })
