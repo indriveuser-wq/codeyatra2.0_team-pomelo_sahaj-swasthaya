@@ -1,27 +1,27 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ClipboardList } from "lucide-react";
 import PrescriptionForm from "./PrescriptionForm";
 
 const TABS = ["Queue", "Write Prescription"];
 
-// ─── Status badge helper ────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const styles = {
-    Waiting:    "bg-yellow-100 text-yellow-700",
+    Waiting: "bg-yellow-100 text-yellow-700",
     InProgress: "bg-blue-100 text-blue-700",
-    Completed:  "bg-green-100 text-green-700",
-    Cancelled:  "bg-red-100 text-red-700",
+    Completed: "bg-green-100 text-green-700",
+    Cancelled: "bg-red-100 text-red-700",
   };
   return (
-    <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${styles[status] ?? "bg-gray-100 text-gray-600"}`}>
+    <span
+      className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${styles[status] ?? "bg-gray-100 text-gray-600"}`}
+    >
       {status}
     </span>
   );
 }
 
-// ─── Single queue row ────────────────────────────────────────────────────────
-function QueueRow({ token }) {
+function QueueRow({ token, onPrescribe }) {
   return (
     <div className="card flex items-center justify-between gap-2">
       <div className="space-y-0.5 min-w-0">
@@ -29,24 +29,33 @@ function QueueRow({ token }) {
           {token.patientName}
         </p>
         <p className="text-xs text-gray-400">
-          {token.department?.name ?? "—"} ·{" "}
-          Dr. {token.doctor?.name ?? "—"} ·{" "}
+          {token.department?.name ?? "—"} · Dr. {token.doctor?.name ?? "—"} ·{" "}
           Token #{token.tokenNumber}
         </p>
       </div>
-      <StatusBadge status={token.status} />
+      <div className="flex items-center gap-2 shrink-0">
+        <StatusBadge status={token.status} />
+        {(token.status === "Waiting" || token.status === "InProgress") && (
+          <button
+            onClick={() => onPrescribe(token)}
+            className="flex items-center gap-1 text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg hover:bg-teal-100 transition font-medium"
+          >
+            <ClipboardList size={13} />
+            Prescribe
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Stats row ───────────────────────────────────────────────────────────────
 function StatsRow({ tokens }) {
   const count = (status) => tokens.filter((t) => t.status === status).length;
   const stats = [
     { label: "Today's OPD", val: tokens.length },
-    { label: "Waiting",       val: count("Waiting") },
-    { label: "In Progress",   val: count("InProgress") },
-    { label: "Completed",     val: count("Completed") },
+    { label: "Waiting", val: count("Waiting") },
+    { label: "In Progress", val: count("InProgress") },
+    { label: "Completed", val: count("Completed") },
   ];
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -60,13 +69,24 @@ function StatsRow({ tokens }) {
   );
 }
 
-// ─── Main dashboard ──────────────────────────────────────────────────────────
 function StaffDashboard({ user }) {
-  const [activeTab, setActiveTab]   = useState("Queue");
-  const [tokens, setTokens]         = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab] = useState("Queue");
+  const [tokens, setTokens] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]           = useState("");
+  const [error, setError] = useState("");
+  const [rxPrefill, setRxPrefill] = useState(null); // pre-fill data for PrescriptionForm
+
+  // When a queue row's Prescribe button is clicked
+  const handlePrescribe = (token) => {
+    setRxPrefill({
+      tokenNumber: token.tokenNumber,
+      doctorName: token.doctor?.name ?? "",
+      department: token.department?.name ?? "",
+      patientName: token.patientName ?? "",
+    });
+    setActiveTab("Write Prescription");
+  };
 
   const fetchQueue = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -75,10 +95,11 @@ function StaffDashboard({ user }) {
 
     try {
       const today = new Date().toISOString().split("T")[0];
-      const res   = await fetch(`/api/token?date=${today}`);
-      const data  = await res.json();
+      const res = await fetch(`/api/token?date=${today}`);
+      const data = await res.json();
 
-      if (!res.ok || !data.success) throw new Error(data.error || "Failed to load queue");
+      if (!res.ok || !data.success)
+        throw new Error(data.error || "Failed to load queue");
       setTokens(data.tokens ?? []);
     } catch (err) {
       setError(err.message);
@@ -88,15 +109,19 @@ function StaffDashboard({ user }) {
     }
   }, []);
 
-  useEffect(() => { fetchQueue(); }, [fetchQueue]);
+  useEffect(() => {
+    fetchQueue();
+  }, [fetchQueue]);
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
       {/* Welcome card */}
       <div className="card border-l-4 border-l-teal-600">
         <p className="text-xs text-gray-400">Staff Portal</p>
-        <h2 className="text-xl font-semibold" style={{ fontFamily: "Fraunces,serif" }}>
+        <h2
+          className="text-xl font-semibold"
+          style={{ fontFamily: "Fraunces,serif" }}
+        >
           {user.name}
         </h2>
         <p className="text-sm text-gray-500 mt-1 capitalize">{user.role}</p>
@@ -119,7 +144,6 @@ function StaffDashboard({ user }) {
         ))}
       </div>
 
-      {/* ── Queue tab ─────────────────────────────────────────────────── */}
       {activeTab === "Queue" && (
         <>
           {/* Stats — always show even while loading */}
@@ -135,7 +159,10 @@ function StaffDashboard({ user }) {
               disabled={refreshing || loading}
               className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 disabled:opacity-40"
             >
-              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw
+                size={13}
+                className={refreshing ? "animate-spin" : ""}
+              />
               {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           </div>
@@ -151,7 +178,10 @@ function StaffDashboard({ user }) {
           {!loading && error && (
             <div className="card text-center py-10 space-y-2">
               <p className="text-sm text-red-500">{error}</p>
-              <button onClick={() => fetchQueue()} className="text-xs text-teal-600 hover:underline">
+              <button
+                onClick={() => fetchQueue()}
+                className="text-xs text-teal-600 hover:underline"
+              >
                 Try again
               </button>
             </div>
@@ -168,19 +198,18 @@ function StaffDashboard({ user }) {
           {!loading && !error && tokens.length > 0 && (
             <div className="space-y-2">
               {tokens.map((t) => (
-                <QueueRow key={t._id} token={t} />
+                <QueueRow key={t._id} token={t} onPrescribe={handlePrescribe} />
               ))}
             </div>
           )}
         </>
       )}
 
-      {/* ── Prescription tab ──────────────────────────────────────────── */}
-      {activeTab === "Write Prescription" && <PrescriptionForm />}
-
+      {activeTab === "Write Prescription" && (
+        <PrescriptionForm prefill={rxPrefill} />
+      )}
     </main>
   );
 }
 
 export default StaffDashboard;
-

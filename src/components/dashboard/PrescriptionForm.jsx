@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from "react";
-import { Plus, Trash2, Save, CheckCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Trash2, Save, CheckCircle, Search, X } from "lucide-react";
 
 // ─── Empty medicine row ───────────────────────────────────────────────────────
 const emptyMedicine = () => ({
@@ -90,20 +90,62 @@ function MedicineRow({ medicine, index, onChange, onRemove }) {
 }
 
 // ─── Main form ────────────────────────────────────────────────────────────────
-export default function PrescriptionForm({ onSuccess }) {
-  const [form, setForm] = useState({
-    tokenNumber: "",
-    doctorName: "",
-    department: "",
+// prefill: { tokenNumber, doctorName, department, patientName } — passed from QueueRow
+export default function PrescriptionForm({ onSuccess, prefill = null }) {
+  const emptyForm = () => ({
+    tokenNumber: prefill?.tokenNumber ?? "",
+    doctorName: prefill?.doctorName ?? "",
+    department: prefill?.department ?? "",
+    patientName: prefill?.patientName ?? "",
     diagnosis: "",
     advice: "",
     followUpDate: "",
     medicines: [emptyMedicine()],
   });
 
+  const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [looking, setLooking] = useState(false); // token lookup in progress
+  const [locked, setLocked] = useState(!!prefill); // doctor/dept locked when auto-filled
+
+  // Re-initialise if prefill changes (e.g. different queue row clicked)
+  useEffect(() => {
+    setForm(emptyForm());
+    setLocked(!!prefill);
+    setSubmitted(false);
+    setError("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
+
+  // ── Auto-lookup token details when token number is entered manually ─────────
+  const handleTokenLookup = async () => {
+    const num = Number(form.tokenNumber);
+    if (!num || locked) return;
+    setLooking(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/token?tokenNumber=${num}`);
+      const data = await res.json();
+      const t = data.tokens?.[0];
+      if (t) {
+        setForm((prev) => ({
+          ...prev,
+          doctorName: t.doctor?.name ?? prev.doctorName,
+          department: t.department?.name ?? prev.department,
+          patientName: t.patientName ?? prev.patientName,
+        }));
+        setLocked(true);
+      } else {
+        setError("Token not found. Please check the token number.");
+      }
+    } catch {
+      setError("Failed to look up token.");
+    } finally {
+      setLooking(false);
+    }
+  };
 
   // ── Field updaters ──────────────────────────────────────────────────────────
   const setField = (key) => (e) =>
@@ -128,12 +170,21 @@ export default function PrescriptionForm({ onSuccess }) {
       medicines: prev.medicines.filter((_, i) => i !== index),
     }));
 
+  const resetLock = () => {
+    setLocked(false);
+    setForm((prev) => ({
+      ...prev,
+      doctorName: "",
+      department: "",
+      patientName: "",
+    }));
+  };
+
   // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
     try {
       const res = await fetch("/api/prescription", {
         method: "POST",
@@ -144,13 +195,9 @@ export default function PrescriptionForm({ onSuccess }) {
           followUpDate: form.followUpDate || null,
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok || !data.success) {
+      if (!res.ok || !data.success)
         throw new Error(data.error || "Failed to save prescription");
-      }
-
       setSubmitted(true);
       onSuccess?.(data.prescription);
     } catch (err) {
@@ -175,15 +222,8 @@ export default function PrescriptionForm({ onSuccess }) {
         <button
           onClick={() => {
             setSubmitted(false);
-            setForm({
-              tokenNumber: "",
-              doctorName: "",
-              department: "",
-              diagnosis: "",
-              advice: "",
-              followUpDate: "",
-              medicines: [emptyMedicine()],
-            });
+            setForm(emptyForm());
+            setLocked(!!prefill);
           }}
           className="btn-primary mt-2"
         >
@@ -213,44 +253,99 @@ export default function PrescriptionForm({ onSuccess }) {
           Visit Details
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
+        {/* Token Number + Lookup */}
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
             <label className="label">Token Number</label>
             <input
               type="number"
               value={form.tokenNumber}
-              onChange={setField("tokenNumber")}
+              onChange={(e) => {
+                setField("tokenNumber")(e);
+                setLocked(false);
+              }}
               placeholder="e.g. 42"
               className="input-field w-full"
               required
               min={1}
+              readOnly={locked}
             />
           </div>
-
-          <div>
-            <label className="label">Doctor Name</label>
-            <input
-              type="text"
-              value={form.doctorName}
-              onChange={setField("doctorName")}
-              placeholder="Dr. Anisha Sharma"
-              className="input-field w-full"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="label">Department</label>
-            <input
-              type="text"
-              value={form.department}
-              onChange={setField("department")}
-              placeholder="e.g. Cardiology"
-              className="input-field w-full"
-              required
-            />
-          </div>
+          {!locked ? (
+            <button
+              type="button"
+              onClick={handleTokenLookup}
+              disabled={!form.tokenNumber || looking}
+              className="btn-teal flex items-center gap-1.5 py-2.5 disabled:opacity-50"
+            >
+              <Search size={14} />
+              {looking ? "Looking up…" : "Lookup"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={resetLock}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg px-3 py-2.5"
+              title="Change token"
+            >
+              <X size={14} /> Change
+            </button>
+          )}
         </div>
+
+        {/* Auto-filled patient/doctor/dept info */}
+        {locked && (form.patientName || form.doctorName || form.department) && (
+          <div className="bg-teal-50 border border-teal-100 rounded-lg px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+            {form.patientName && (
+              <div>
+                <p className="text-xs text-teal-500">Patient</p>
+                <p className="font-medium text-gray-800">{form.patientName}</p>
+              </div>
+            )}
+            {form.doctorName && (
+              <div>
+                <p className="text-xs text-teal-500">Doctor</p>
+                <p className="font-medium text-gray-800">
+                  Dr. {form.doctorName}
+                </p>
+              </div>
+            )}
+            {form.department && (
+              <div>
+                <p className="text-xs text-teal-500">Department</p>
+                <p className="font-medium text-gray-800">{form.department}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Manual doctor/dept entry — only when not auto-filled */}
+        {!locked && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Doctor Name</label>
+              <input
+                type="text"
+                value={form.doctorName}
+                onChange={setField("doctorName")}
+                placeholder="Dr. Anisha Sharma"
+                className="input-field w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Department</label>
+              <input
+                type="text"
+                value={form.department}
+                onChange={setField("department")}
+                placeholder="e.g. Cardiology"
+                className="input-field w-full"
+                required
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="label">Diagnosis / Chief Complaint</label>
