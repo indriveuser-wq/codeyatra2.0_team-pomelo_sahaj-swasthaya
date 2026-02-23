@@ -1,426 +1,254 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/context';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useAuth } from '@/lib/context';
+import Navbar from '@/components/Navbar';
+import {
+  FlaskConical,
+  ScanLine,
+  ClipboardList,
+  Download,
+  Clock,
+  CheckCircle,
+  ChevronLeft,
+} from 'lucide-react';
+import { MOCK_REPORTS } from './mockReports';
 
-export default function BookAppointmentPage() {
-  const { user, loading } = useAuth();
-  const [step, setStep] = useState(1);
-  const [departments, setDepartments] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [slots, setSlots] = useState([]);
-  const [selectedDept, setSelectedDept] = useState(null);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [loadingData, setLoadingData] = useState(true);
-  const [bookingLoading, setBookingLoading] = useState(false);
+const TYPE_CONFIG = {
+  Lab: {
+    Icon: FlaskConical,
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    badge: 'bg-blue-100 text-blue-700',
+  },
+  Radiology: {
+    Icon: ScanLine,
+    bg: 'bg-purple-50',
+    text: 'text-purple-700',
+    badge: 'bg-purple-100 text-purple-700',
+  },
+  Prescription: {
+    Icon: ClipboardList,
+    bg: 'bg-teal-50',
+    text: 'text-teal-700',
+    badge: 'bg-teal-100 text-teal-700',
+  },
+};
+
+const REPORT_FILTERS = ['All', 'Lab', 'Radiology'];
+
+const PRESCRIPTIONS = MOCK_REPORTS.filter((r) => r.type === 'Prescription');
+const REPORTS = MOCK_REPORTS.filter((r) => r.type !== 'Prescription');
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function RecordCard({ report }) {
+  const config = TYPE_CONFIG[report.type] ?? TYPE_CONFIG.Lab;
+  const { Icon } = config;
+  const isAvailable = report.status === 'Available';
+
+  return (
+    <div className={`bg-white rounded-2xl shadow-sm border p-6 hover:shadow-md transition-shadow duration-200 ${isAvailable ? 'border-gray-100' : 'border-yellow-200 bg-yellow-50/40'}`}>
+      {/* Header */}
+      <div className="flex items-start gap-4 mb-4">
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ring-2 ${config.bg.replace('50', '100')}`}>
+          <Icon size={24} className={config.text} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-lg font-bold text-gray-900 leading-tight">
+            {report.title}
+          </p>
+          <p className="text-base text-gray-600 mt-1">
+            {report.doctor} · <span className="text-gray-400">{report.department}</span>
+          </p>
+        </div>
+        <span className={`shrink-0 text-sm px-3.5 py-1.5 rounded-full font-semibold ${config.badge}`}>
+          {report.type}
+        </span>
+      </div>
+
+      {/* Summary */}
+      <p className="text-base text-gray-700 leading-relaxed mb-5">
+        {report.summary}
+      </p>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          {isAvailable ? (
+            <CheckCircle size={18} className="text-green-500" />
+          ) : (
+            <Clock size={18} className="text-yellow-500" />
+          )}
+          <span className={`text-base font-semibold ${isAvailable ? 'text-green-600' : 'text-yellow-600'}`}>
+            {isAvailable ? 'Available' : 'Pending'}
+          </span>
+          <span className="text-gray-300 text-lg">·</span>
+          <span className="text-base text-gray-500 font-medium">{formatDate(report.date)}</span>
+        </div>
+        <button
+          disabled={!isAvailable}
+          className={`flex items-center gap-2 text-base font-semibold px-4 py-2.5 rounded-xl border transition-all duration-200 ${
+            isAvailable
+              ? 'text-blue-700 border-blue-200 hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm'
+              : 'text-gray-300 border-gray-100 cursor-not-allowed bg-gray-50'
+          }`}
+        >
+          <Download size={18} />
+          Download
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function ReportsPage() {
+  const { user, logout, loading } = useAuth();
   const router = useRouter();
+  const [mainTab, setMainTab] = useState('prescriptions');
+  const [reportFilter, setReportFilter] = useState('All');
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
-    if (user) {
-      fetchDepartments();
-    }
-  }, [user, loading]);
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
 
-  const fetchDepartments = async () => {
-    try {
-      const res = await fetch('/api/departments');
-      const data = await res.json();
-      if (data.departments) setDepartments(data.departments);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-    }
-    setLoadingData(false);
-  };
-
-  const fetchDoctors = async (deptId) => {
-    try {
-      const res = await fetch(`/api/doctors?department=${deptId}`);
-      const data = await res.json();
-      if (data.doctors) setDoctors(data.doctors);
-    } catch (error) {
-      console.error('Error fetching doctors:', error);
-    }
-  };
-
-  const fetchSlots = async (doctorId) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const res = await fetch(`/api/slots?date=${today}&doctorId=${doctorId}`);
-      const data = await res.json();
-      if (data.slots) setSlots(data.slots);
-    } catch (error) {
-      console.error('Error fetching slots:', error);
-    }
-  };
-
-  const handleDeptSelect = (dept) => {
-    setSelectedDept(dept);
-    fetchDoctors(dept._id);
-    setStep(2);
-  };
-
-  const handleDoctorSelect = (doctor) => {
-    setSelectedDoctor(doctor);
-    fetchSlots(doctor._id);
-    setStep(3);
-  };
-
-  const handleSlotSelect = (slot) => {
-    setSelectedSlot(slot);
-    setStep(4);
-  };
-
-  const handleBooking = async () => {
-    if (!selectedSlot || !selectedDoctor || !selectedDept) return;
-    
-    setBookingLoading(true);
-    try {
-      const res = await fetch('/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patientName: user.name,
-          phone: user.phone,
-          userId: user._id,
-          appointmentTime: selectedSlot.time,
-          department: selectedDept._id,
-          doctor: selectedDoctor._id
-        }),
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        alert('Appointment booked successfully!');
-        router.push('/dashboard');
-      } else {
-        alert(data.error || 'Failed to book appointment');
-      }
-    } catch (error) {
-      alert('Error booking appointment');
-    }
-    setBookingLoading(false);
-  };
-
-  const getDepartmentIcon = (name) => {
-    const icons = {
-      'Orthopedics': '🦴',
-      'Pediatrics': '👶',
-      'Radiology': '📡',
-      'Neurology': '🧠',
-      'Eye': '👁️',
-      'Cardiology': '❤️',
-      'Dermatology': '',
-      'ENT': '👂',
-      'General': '🏥'
-    };
-    return icons[name] || '🏥';
-  };
-
-  if (loading || loadingData) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-700 font-semibold text-lg">Loading medical records...</p>
         </div>
       </div>
     );
   }
 
+  const filteredReports =
+    reportFilter === 'All'
+      ? REPORTS
+      : REPORTS.filter((r) => r.type === reportFilter);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-lg">
-                🏥 Sahaj Swasthya
-              </div>
-            </Link>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <Navbar user={user} onLogout={logout} />
 
-            <div className="hidden md:flex items-center space-x-6">
-              <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
-              <Link href="/dashboard/appointments" className="text-gray-700 hover:text-blue-600 font-medium">Appointments</Link>
-              <Link href="/dashboard/reports" className="text-gray-700 hover:text-blue-600 font-medium">Reports</Link>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <Link href="/logout" className="text-red-600 hover:text-red-700 font-medium px-4 py-2">
-                Logout
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+        {/* Page header */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors -ml-1"
+            aria-label="Back to dashboard"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-tight">
+              Medical Records
+            </h1>
+            <p className="text-base text-gray-600 mt-1.5 font-medium">
+              Your prescriptions, lab results, and imaging reports
+            </p>
+          </div>
+        </div>
+
+        {/* Main tabs - Enhanced */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 inline-flex">
+          {[
+            { key: 'prescriptions', label: 'Prescriptions', count: PRESCRIPTIONS.length },
+            { key: 'reports', label: 'Reports', count: REPORTS.length },
+          ].map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setMainTab(key)}
+              className={`px-6 py-3 rounded-xl text-base font-bold transition-all duration-200 flex items-center gap-2 ${
+                mainTab === key
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              {label}
+              <span className={`text-sm font-semibold px-2 py-0.5 rounded-lg ${
+                mainTab === key ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {count}
+              </span>
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+          ))}
+        </div>
+
+        {/* Prescriptions tab */}
+        {mainTab === 'prescriptions' &&
+          (PRESCRIPTIONS.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ClipboardList size={28} className="text-teal-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">OPD Registration</h1>
+              <p className="text-lg font-semibold text-gray-700">No prescriptions on record</p>
+              <p className="text-base text-gray-500 mt-2">Prescriptions will appear here after your appointments</p>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {PRESCRIPTIONS.map((r) => (
+                <RecordCard key={r.id} report={r} />
+              ))}
+            </div>
+          ))}
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition ${
-                  s <= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-                }`}>
-                  {s < step ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    s
-                  )}
-                </div>
-                {s < 4 && (
-                  <div className={`w-16 md:w-24 h-1 mx-2 transition ${
-                    s < step ? 'bg-blue-600' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-600 px-4">
-            <span>Department</span>
-            <span>Doctor</span>
-            <span>Time Slot</span>
-            <span>Confirm</span>
-          </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
-          
-          {/* Step 1: Select Department */}
-          {step === 1 && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Select Department</h2>
-              <p className="text-gray-600 mb-6">Choose the specialty you need</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {departments.map((dept) => (
+        {/* Reports tab */}
+        {mainTab === 'reports' && (
+          <div className="space-y-6">
+            {/* Sub-filters - Enhanced */}
+            <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-2 px-2">
+              {REPORT_FILTERS.map((f) => {
+                const count = REPORTS.filter((r) => r.type === f).length;
+                return (
                   <button
-                    key={dept._id}
-                    onClick={() => handleDeptSelect(dept)}
-                    className="bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl p-6 text-left transition group"
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold border transition-all duration-200 ${
+                      reportFilter === f
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50'
+                    }`}
                   >
-                    <div className="text-4xl mb-3">{getDepartmentIcon(dept.name)}</div>
-                    <h3 className="font-bold text-gray-900 mb-1 group-hover:text-blue-700">{dept.name}</h3>
-                    <p className="text-sm text-gray-600">{dept.description || 'Medical care and treatment'}</p>
+                    {f}
+                    {f !== 'All' && (
+                      <span className={`ml-2 text-xs font-semibold ${reportFilter === f ? 'text-blue-100' : 'text-gray-400'}`}>
+                        ({count})
+                      </span>
+                    )}
                   </button>
+                );
+              })}
+            </div>
+
+            {filteredReports.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FlaskConical size={28} className="text-blue-600" />
+                </div>
+                <p className="text-lg font-semibold text-gray-700">No reports found</p>
+                <p className="text-base text-gray-500 mt-2">Try selecting a different category or check back later</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {filteredReports.map((r) => (
+                  <RecordCard key={r.id} report={r} />
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Step 2: Select Doctor */}
-          {step === 2 && (
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <button 
-                  onClick={() => setStep(1)}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                >
-                  ← Back
-                </button>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Select Doctor</h2>
-              <p className="text-gray-600 mb-6">Choose from our specialists in {selectedDept?.name}</p>
-              
-              <div className="space-y-4">
-                {doctors.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-600">No doctors available in this department</p>
-                  </div>
-                ) : (
-                  doctors.map((doctor) => (
-                    <button
-                      key={doctor._id}
-                      onClick={() => handleDoctorSelect(doctor)}
-                      className="w-full bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl p-6 text-left transition flex items-center gap-4"
-                    >
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-3xl">
-                        👨‍⚕️
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 mb-1">Dr. {doctor.name}</h3>
-                        <p className="text-sm text-gray-600">{doctor.specialization || 'General Physician'}</p>
-                        <p className="text-xs text-gray-500 mt-1">{doctor.experience || '5+ years'} experience</p>
-                      </div>
-                      <div className="text-blue-600">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Select Time Slot */}
-          {step === 3 && (
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <button 
-                  onClick={() => setStep(2)}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                >
-                  ← Back
-                </button>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Select Time Slot</h2>
-              <p className="text-gray-600 mb-6">Choose your preferred appointment time</p>
-              
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
-                    👨‍⚕️
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">Dr. {selectedDoctor?.name}</p>
-                    <p className="text-sm text-gray-600">{selectedDoctor?.specialization}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                {slots.filter(s => s.available).map((slot) => (
-                  <button
-                    key={slot.time}
-                    onClick={() => handleSlotSelect(slot)}
-                    className="bg-gray-50 hover:bg-blue-600 hover:text-white border-2 border-gray-200 hover:border-blue-600 rounded-lg p-3 text-center font-medium transition"
-                  >
-                    {slot.display}
-                  </button>
-                ))}
-              </div>
-
-              {slots.filter(s => s.available).length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 mb-2">No slots available today</p>
-                  <p className="text-sm text-gray-500">Please try another date or doctor</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Confirmation */}
-          {step === 4 && (
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <button 
-                  onClick={() => setStep(3)}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                >
-                  ← Back
-                </button>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Confirm Appointment</h2>
-              <p className="text-gray-600 mb-6">Review your appointment details</p>
-              
-              <div className="space-y-4 mb-8">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-xs text-gray-500 mb-1">Department</p>
-                  <p className="font-semibold text-gray-900">{selectedDept?.name}</p>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-xs text-gray-500 mb-1">Doctor</p>
-                  <p className="font-semibold text-gray-900">Dr. {selectedDoctor?.name}</p>
-                  <p className="text-sm text-gray-600">{selectedDoctor?.specialization}</p>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-xs text-gray-500 mb-1">Date & Time</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(selectedSlot?.time).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                  <p className="text-lg font-bold text-blue-600 mt-1">
-                    {new Date(selectedSlot?.time).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-semibold">Note:</span> Please arrive 15 minutes before your appointment time. Late arrivals may be subject to rescheduling.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-lg font-semibold transition"
-                >
-                  Change Slot
-                </button>
-                <button
-                  onClick={handleBooking}
-                  disabled={bookingLoading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
-                >
-                  {bookingLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Booking...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Confirm Booking
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Help Section */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Need help?{' '}
-            <Link href="/contact" className="text-blue-600 hover:text-blue-700 font-medium">
-              Contact Support
-            </Link>
-          </p>
-        </div>
-      </div>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

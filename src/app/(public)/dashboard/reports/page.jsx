@@ -1,264 +1,330 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/context';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useAuth } from '@/lib/context';
+import Navbar from '@/components/Navbar';
+import {
+  FlaskConical,
+  ScanLine,
+  ClipboardList,
+  Download,
+  Clock,
+  CheckCircle,
+  ChevronLeft,
+} from 'lucide-react';
+
+const TYPE_CONFIG = {
+  Lab: {
+    Icon: FlaskConical,
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    badge: 'bg-blue-100 text-blue-700',
+  },
+  Radiology: {
+    Icon: ScanLine,
+    bg: 'bg-purple-50',
+    text: 'text-purple-700',
+    badge: 'bg-purple-100 text-purple-700',
+  },
+  Prescription: {
+    Icon: ClipboardList,
+    bg: 'bg-teal-50',
+    text: 'text-teal-700',
+    badge: 'bg-teal-100 text-teal-700',
+  },
+};
+
+const REPORT_FILTERS = ['All', 'Lab', 'Radiology'];
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function RecordCard({ report }) {
+  const config = TYPE_CONFIG[report.type] ?? TYPE_CONFIG.Lab;
+  const { Icon } = config;
+  const isAvailable = report.status === 'Available';
+
+  const handleDownload = async () => {
+    try {
+      // Fetch the actual file from backend
+      const response = await fetch(`/api/report/download?id=${report._id}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.title.replace(/\s+/g, '_')}_${formatDate(report.date)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download report. Please try again.');
+    }
+  };
+
+  return (
+    <div className={`bg-white rounded-2xl shadow-sm border p-6 hover:shadow-md transition-shadow duration-200 ${isAvailable ? 'border-gray-100' : 'border-yellow-200 bg-yellow-50/40'}`}>
+      {/* Header */}
+      <div className="flex items-start gap-4 mb-4">
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ring-2 ${config.bg.replace('50', '100')}`}>
+          <Icon size={24} className={config.text} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-lg font-bold text-gray-900 leading-tight">
+            {report.title}
+          </p>
+          <p className="text-base text-gray-600 mt-1">
+            {report.doctor} · <span className="text-gray-400">{report.department}</span>
+          </p>
+        </div>
+        <span className={`shrink-0 text-sm px-3.5 py-1.5 rounded-full font-semibold ${config.badge}`}>
+          {report.type}
+        </span>
+      </div>
+
+      {/* Summary */}
+      <p className="text-base text-gray-700 leading-relaxed mb-5">
+        {report.summary}
+      </p>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          {isAvailable ? (
+            <CheckCircle size={18} className="text-green-500" />
+          ) : (
+            <Clock size={18} className="text-yellow-500" />
+          )}
+          <span className={`text-base font-semibold ${isAvailable ? 'text-green-600' : 'text-yellow-600'}`}>
+            {isAvailable ? 'Available' : 'Pending'}
+          </span>
+          <span className="text-gray-300 text-lg">·</span>
+          <span className="text-base text-gray-500 font-medium">{formatDate(report.date)}</span>
+        </div>
+        <button
+          disabled={!isAvailable}
+          onClick={handleDownload}
+          className={`flex items-center gap-2 text-base font-semibold px-4 py-2.5 rounded-xl border transition-all duration-200 ${
+            isAvailable
+              ? 'text-blue-700 border-blue-200 hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm'
+              : 'text-gray-300 border-gray-100 cursor-not-allowed bg-gray-50'
+          }`}
+        >
+          <Download size={18} />
+          Download
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ReportsPage() {
-  const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('prescriptions');
-  const [prescriptions, setPrescriptions] = useState([]);
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
+  const [mainTab, setMainTab] = useState('prescriptions');
+  const [reportFilter, setReportFilter] = useState('All');
   const [reports, setReports] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-  const router = useRouter();
-
-  const fetchData = async () => {
-    try {
-      // Fetch prescriptions
-      const presRes = await fetch(`/api/prescriptions?userId=${user._id}`);
-      const presData = await presRes.json();
-      if (presData.prescriptions) setPrescriptions(presData.prescriptions);
-
-      // Fetch reports
-      const repRes = await fetch(`/api/reports?userId=${user._id}`);
-      const repData = await repRes.json();
-      if (repData.reports) setReports(repData.reports);
-    } catch (error) {
-      console.error('Error fetching ', error);
-    }
-    setLoadingData(false);
-  };
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
-    if (user) {
-      fetchData();
-    }
-  }, [user, loading, fetchData]);
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
 
-  const handleDownload = async (item) => {
-    // Simulate download
-    alert(`Downloading ${item.title}...`);
+  useEffect(() => {
+    if (user) {
+      fetchReports();
+    }
+  }, [user]);
+
+  const fetchReports = async () => {
+    try {
+      setLoadingData(true);
+      setError(null);
+      const response = await fetch('/api/report');
+      if (!response.ok) throw new Error('Failed to fetch reports');
+      const data = await response.json();
+      setReports(data.reports || []);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+      setError('Unable to load your medical records. Please try again.');
+    } finally {
+      setLoadingData(false);
+    }
   };
 
-  if (loading || loadingData) {
+  const PRESCRIPTIONS = reports.filter((r) => r.type === 'Prescription');
+  const REPORTS = reports.filter((r) => r.type !== 'Prescription');
+
+  const filteredReports =
+    reportFilter === 'All'
+      ? REPORTS
+      : REPORTS.filter((r) => r.type === reportFilter);
+
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-700 font-semibold text-lg">Loading medical records...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-700 font-semibold text-lg">Fetching your records...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-lg">
-                🏥 Sahaj Swasthya
-              </div>
-            </Link>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <Navbar user={user} onLogout={logout} />
 
-            <div className="hidden md:flex items-center space-x-6">
-              <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">Dashboard</Link>
-              <Link href="/dashboard/appointments" className="text-gray-700 hover:text-blue-600 font-medium">Appointments</Link>
-              <Link href="/dashboard/reports" className="text-blue-600 font-medium">Reports</Link>
-              <Link href="/dashboard/profile" className="text-gray-700 hover:text-blue-600 font-medium">Profile</Link>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <Link href="/logout" className="text-red-600 hover:text-red-700 font-medium px-4 py-2">
-                Logout
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">Medical Records</h1>
+        {/* Page header */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors -ml-1"
+            aria-label="Back to dashboard"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-tight">
+              Medical Records
+            </h1>
+            <p className="text-base text-gray-600 mt-1.5 font-medium">
+              Your prescriptions, lab results, and imaging reports
+            </p>
           </div>
-          <p className="text-gray-600 ml-7">Your prescriptions, lab results, and imaging reports</p>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-          <div className="border-b border-gray-200">
-            <div className="flex gap-8 px-6">
-              <button
-                onClick={() => setActiveTab('prescriptions')}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition ${
-                  activeTab === 'prescriptions'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Prescriptions
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  activeTab === 'prescriptions' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {prescriptions.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('reports')}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition ${
-                  activeTab === 'reports'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Reports
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  activeTab === 'reports' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {reports.length}
-                </span>
-              </button>
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
+                <Clock size={20} className="text-red-600" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-red-800">Unable to load records</p>
+                <p className="text-base text-red-600 mt-1">{error}</p>
+                <button
+                  onClick={fetchReports}
+                  className="mt-3 text-base font-semibold text-red-700 hover:text-red-800 underline"
+                >
+                  Try again
+                </button>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 'prescriptions' ? (
-              prescriptions.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-600 font-medium mb-2">No prescriptions yet</p>
-                  <p className="text-gray-500 text-sm">Prescriptions will appear here after your appointments</p>
+        {/* Main tabs - Enhanced */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 inline-flex">
+          {[
+            { key: 'prescriptions', label: 'Prescriptions', count: PRESCRIPTIONS.length },
+            { key: 'reports', label: 'Reports', count: REPORTS.length },
+          ].map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setMainTab(key)}
+              className={`px-6 py-3 rounded-xl text-base font-bold transition-all duration-200 flex items-center gap-2 ${
+                mainTab === key
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              {label}
+              <span className={`text-sm font-semibold px-2 py-0.5 rounded-lg ${
+                mainTab === key ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Prescriptions tab */}
+        {mainTab === 'prescriptions' &&
+          (PRESCRIPTIONS.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ClipboardList size={28} className="text-teal-600" />
+              </div>
+              <p className="text-lg font-semibold text-gray-700">No prescriptions on record</p>
+              <p className="text-base text-gray-500 mt-2">Prescriptions will appear here after your appointments</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {PRESCRIPTIONS.map((r) => (
+                <RecordCard key={r._id} report={r} />
+              ))}
+            </div>
+          ))}
+
+        {/* Reports tab */}
+        {mainTab === 'reports' && (
+          <div className="space-y-6">
+            {/* Sub-filters - Enhanced */}
+            <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-2 px-2">
+              {REPORT_FILTERS.map((f) => {
+                const count = REPORTS.filter((r) => r.type === f).length;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold border transition-all duration-200 ${
+                      reportFilter === f
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50'
+                    }`}
+                  >
+                    {f}
+                    {f !== 'All' && (
+                      <span className={`ml-2 text-xs font-semibold ${reportFilter === f ? 'text-blue-100' : 'text-gray-400'}`}>
+                        ({count})
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredReports.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FlaskConical size={28} className="text-blue-600" />
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {prescriptions.map((pres) => (
-                    <div key={pres._id} className="bg-gray-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-gray-900">{pres.title}</h3>
-                            <p className="text-sm text-gray-600">{pres.doctor?.name} • {pres.department?.name}</p>
-                          </div>
-                        </div>
-                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          Prescription
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-gray-700 mb-4 line-clamp-2">{pres.medications}</p>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-sm text-green-700 font-medium">Available</span>
-                          <span className="text-sm text-gray-500">{new Date(pres.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        </div>
-                        <button 
-                          onClick={() => handleDownload(pres)}
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
+                <p className="text-lg font-semibold text-gray-700">No reports found</p>
+                <p className="text-base text-gray-500 mt-2">Try selecting a different category or check back later</p>
+              </div>
             ) : (
-              reports.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-600 font-medium mb-2">No reports yet</p>
-                  <p className="text-gray-500 text-sm">Lab and imaging reports will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reports.map((report) => (
-                    <div key={report._id} className="bg-gray-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-gray-900">{report.title}</h3>
-                            <p className="text-sm text-gray-600">{report.type} • {new Date(report.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                          </div>
-                        </div>
-                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          Lab Report
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="bg-white rounded-lg p-3">
-                          <p className="text-xs text-gray-500 mb-1">Department</p>
-                          <p className="font-semibold text-gray-900 text-sm">{report.department?.name}</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-3">
-                          <p className="text-xs text-gray-500 mb-1">Status</p>
-                          <p className="font-semibold text-green-700 text-sm">Completed</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-sm text-green-700 font-medium">Ready to download</span>
-                        </div>
-                        <button 
-                          onClick={() => handleDownload(report)}
-                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Download PDF
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {filteredReports.map((r) => (
+                  <RecordCard key={r._id} report={r} />
+                ))}
+              </div>
             )}
           </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }
