@@ -104,7 +104,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex gap-3">
-              <Link href="/dashboard/book" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition">
+              <Link href="/opd-registration" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition">
                 Book Appointment
               </Link>
               <Link href="/dashboard/appointments" className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-medium transition">
@@ -241,7 +241,7 @@ export default function Dashboard() {
                 </svg>
               </div>
               <p className="text-gray-600 mb-4 font-medium">No active appointments</p>
-              <Link href="/dashboard/book" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition">
+              <Link href="/opd-registration" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition">
                 Book Your First Appointment
               </Link>
             </div>
