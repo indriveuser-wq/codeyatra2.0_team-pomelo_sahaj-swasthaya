@@ -80,65 +80,69 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <Navbar user={user} onLogout={logout} />
 
-      <main className="max-w-3xl mx-auto px-4 py-10 space-y-10">
-        {/* Page title */}
-        <div>
-          <h1
-            className="text-2xl sm:text-3xl font-semibold text-gray-900"
-            style={{ fontFamily: 'Fraunces,serif' }}
-          >
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+        
+        {/* Page title - Enhanced */}
+        <div className="text-center">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
             Contact Us
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Get in touch with our affiliated hospital or reach a doctor
-            directly.
+          <p className="text-lg text-gray-600 mt-3 font-medium max-w-2xl mx-auto">
+            Get in touch with our affiliated hospital or reach a doctor directly.
           </p>
         </div>
 
-        {/* Hospital info card */}
-        <section className="card border-l-4 border-l-blue-700 space-y-4">
-          <div>
-            <p className="text-base font-semibold text-gray-900">
-              {HOSPITAL.name}
-            </p>
-            <p className="text-xs text-blue-600 font-medium">
-              {HOSPITAL.tagline}
-            </p>
+        {/* Hospital info card - Enhanced */}
+        <section className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
+          <div className="flex items-start gap-5 mb-6">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+              🏥
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900 leading-tight">
+                {HOSPITAL.name}
+              </p>
+              <p className="text-base text-blue-600 font-semibold mt-1">
+                {HOSPITAL.tagline}
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-start gap-3">
-              <MapPin size={16} className="text-blue-600 mt-0.5 shrink-0" />
-              <span className="text-gray-600 leading-snug">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+              <MapPin size={20} className="text-blue-600 mt-0.5 shrink-0" />
+              <span className="text-base text-gray-700 leading-relaxed">
                 {HOSPITAL.address}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <Phone size={16} className="text-blue-600 shrink-0" />
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+              <Phone size={20} className="text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-gray-800 font-medium">{HOSPITAL.phone}</p>
-                <p className="text-xs text-red-600 font-medium">
+                <p className="text-base font-semibold text-gray-900">{HOSPITAL.phone}</p>
+                <p className="text-sm text-red-600 font-semibold mt-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                   Emergency: {HOSPITAL.emergency}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Mail size={16} className="text-blue-600 shrink-0" />
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+              <Mail size={20} className="text-blue-600 mt-0.5 shrink-0" />
               <a
                 href={`mailto:${HOSPITAL.email}`}
-                className="text-blue-700 hover:underline break-all"
+                className="text-base text-blue-700 hover:text-blue-800 font-medium hover:underline break-all"
               >
                 {HOSPITAL.email}
               </a>
             </div>
-            <div className="flex items-start gap-3">
-              <Clock3 size={16} className="text-blue-600 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+              <Clock3 size={20} className="text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-gray-600">{HOSPITAL.hours}</p>
-                <p className="text-xs text-green-700 font-medium mt-0.5">
+                <p className="text-base text-gray-700">{HOSPITAL.hours}</p>
+                <p className="text-sm text-green-700 font-semibold mt-1.5 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                   {HOSPITAL.emergency_hours}
                 </p>
               </div>
@@ -146,52 +150,49 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Doctors directory */}
-        <section className="space-y-4">
-          <h2
-            className="text-lg font-semibold text-gray-900"
-            style={{ fontFamily: 'Fraunces,serif' }}
-          >
+        {/* Doctors directory - Enhanced */}
+        <section className="space-y-6">
+          <h2 className="text-2xl font-bold text-gray-900 text-center">
             Doctor Directory
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {DOCTORS.map((doc) => (
-              <div key={doc.email} className="card space-y-2.5">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Stethoscope size={16} className="text-blue-700" />
+              <div key={doc.email} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                    <Stethoscope size={20} className="text-blue-700" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-bold text-gray-900 leading-tight truncate">
                       {doc.name}
                     </p>
-                    <p className="text-xs text-blue-600 font-medium truncate">
+                    <p className="text-base text-blue-600 font-semibold truncate mt-0.5">
                       {doc.dept}
                     </p>
                   </div>
                 </div>
-                <div className="space-y-1.5 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Phone size={11} className="shrink-0 text-gray-400" />
+                <div className="space-y-3 text-base text-gray-600">
+                  <div className="flex items-center gap-3">
+                    <Phone size={18} className="shrink-0 text-gray-400" />
                     <a
                       href={`tel:${doc.phone}`}
-                      className="hover:text-blue-600 transition-colors"
+                      className="hover:text-blue-600 transition-colors font-medium"
                     >
                       {doc.phone}
                     </a>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Mail size={11} className="shrink-0 text-gray-400" />
+                  <div className="flex items-center gap-3">
+                    <Mail size={18} className="shrink-0 text-gray-400" />
                     <a
                       href={`mailto:${doc.email}`}
-                      className="hover:text-blue-600 transition-colors truncate"
+                      className="hover:text-blue-600 transition-colors truncate font-medium"
                     >
                       {doc.email}
                     </a>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock3 size={11} className="shrink-0 text-gray-400" />
-                    <span>{doc.hours}</span>
+                  <div className="flex items-start gap-3">
+                    <Clock3 size={18} className="shrink-0 text-gray-400 mt-0.5" />
+                    <span className="leading-relaxed">{doc.hours}</span>
                   </div>
                 </div>
               </div>
@@ -199,88 +200,92 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Contact form */}
-        <section className="space-y-4">
-          <h2
-            className="text-lg font-semibold text-gray-900"
-            style={{ fontFamily: 'Fraunces,serif' }}
-          >
+        {/* Contact form - Enhanced */}
+        <section className="space-y-6">
+          <h2 className="text-2xl font-bold text-gray-900 text-center">
             Send us a message
           </h2>
 
           {submitted ? (
-            <div className="card border-green-200 bg-green-50 flex items-center gap-3 py-6">
-              <CheckCircle2 size={24} className="text-green-600 shrink-0" />
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-8 flex items-center gap-5">
+              <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center shrink-0">
+                <CheckCircle2 size={28} className="text-green-600" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-green-800">
-                  Message sent!
+                <p className="text-lg font-bold text-green-800">
+                  Message sent successfully!
                 </p>
-                <p className="text-xs text-green-700 mt-0.5">
-                  We&apos;ll get back to you within 1–2 business days.
+                <p className="text-base text-green-700 mt-1.5 leading-relaxed">
+                  We&apos;ll get back to you within 1–2 business days. Thank you for reaching out.
                 </p>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="card space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="label">Your Name</label>
+                  <label className="block text-base font-semibold text-gray-700 mb-2.5">
+                    Your Name
+                  </label>
                   <input
-                    className="input"
-                    placeholder="Riya Desai"
+                    className="w-full px-5 py-4 border border-gray-200 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                    placeholder="Enter your full name"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                   />
                 </div>
                 <div>
-                  <label className="label">Email Address</label>
+                  <label className="block text-base font-semibold text-gray-700 mb-2.5">
+                    Email Address
+                  </label>
                   <input
                     type="email"
-                    className="input"
-                    placeholder="riya@example.com"
+                    className="w-full px-5 py-4 border border-gray-200 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                    placeholder="your.email@example.com"
                     value={form.email}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="label">Message</label>
+                <label className="block text-base font-semibold text-gray-700 mb-2.5">
+                  Message
+                </label>
                 <textarea
-                  className="input resize-none"
-                  rows={4}
-                  placeholder="How can we help you?"
+                  className="w-full px-5 py-4 border border-gray-200 rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white resize-none"
+                  rows={5}
+                  placeholder="How can we help you today?"
                   value={form.message}
-                  onChange={(e) =>
-                    setForm({ ...form, message: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
                   required
                 />
               </div>
               <button
                 type="submit"
-                className="btn-primary flex items-center gap-2"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
               >
-                <Send size={14} />
+                <Send size={20} />
                 Send Message
               </button>
             </form>
           )}
         </section>
 
-        {/* Footer nav */}
-        <div className="flex flex-col sm:flex-row gap-3 pb-4">
+        {/* Footer nav - Enhanced */}
+        <div className="flex flex-col sm:flex-row gap-4 pb-6">
           <Link
             href="/dashboard"
-            className="btn-secondary flex-1 text-center py-3"
+            className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-6 py-4 rounded-2xl font-semibold text-base text-center transition-all duration-200"
           >
-            Back to Dashboard
+            ← Back to Dashboard
           </Link>
-          <Link href="/about" className="btn-secondary flex-1 text-center py-3">
-            About Us
+          <Link
+            href="/about"
+            className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-6 py-4 rounded-2xl font-semibold text-base text-center transition-all duration-200"
+          >
+            About Us →
           </Link>
         </div>
       </main>
