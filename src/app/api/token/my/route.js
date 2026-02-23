@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import QueueToken from '@/models/QueueToken';
 import User from '@/models/User';
+import Department from '@/models/Department'; // required for populate
+import Doctor from '@/models/Doctor'; // required for populate
 import mongoose from 'mongoose';
 
 export async function GET(req) {
@@ -30,7 +32,10 @@ export async function GET(req) {
     const token = await QueueToken.findOne({
       userId: resolvedId,
       status: { $nin: ['Completed', 'Cancelled'] },
-    }).sort({ createdAt: -1 });
+    })
+      .populate('department', 'name')
+      .populate('doctor', 'name specialization')
+      .sort({ createdAt: -1 });
 
     return NextResponse.json({ success: true, token });
   } catch (error) {
