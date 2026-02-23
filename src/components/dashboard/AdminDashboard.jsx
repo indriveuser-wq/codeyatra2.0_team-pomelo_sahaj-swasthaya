@@ -140,20 +140,8 @@ function AdminDashboard({ user }) {
         </p>
       </div>
 
-      {/* Statistics grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label="Total Patients Today" value={stats.patientsToday} />
-        <StatCard label="Active Doctors" value={stats.activeDoctors} />
-        <StatCard label="Open Departments" value={stats.openDepartments} />
-        <StatCard label="Beds Occupied" value={stats.bedsOccupied} />
-        <StatCard label="Pending Reports" value={stats.pendingReports} />
-        <StatCard
-          label="Revenue Today"
-          value={`रू ${stats.revenueToday.toLocaleString()}`}
-        />
-      </div>
+      <StatsGrid stats={stats} />
 
-      {/* Quick actions section */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Quick Actions
