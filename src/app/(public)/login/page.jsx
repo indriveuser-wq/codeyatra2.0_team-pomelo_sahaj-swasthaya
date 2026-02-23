@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/context";
 import { Mail, Lock, Hospital } from "lucide-react";
+import Image from "next/image";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -25,11 +26,11 @@ function Login() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 flex items-center justify-center px-4">
       {/* Login Card */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-        
+
         {/* Header / Branding */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-10 text-center">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Hospital size={32} className="text-white" />
+          <div className="w-30 h-16 bg-white backdrop-blur-sm rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Image src={'/logo.png'} alt="logo" fill className="text-white object-contain" />
           </div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight">
             Welcome Back
@@ -41,7 +42,7 @@ function Login() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
+
           {/* Email Input */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
